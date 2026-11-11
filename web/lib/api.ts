@@ -25,9 +25,15 @@ async function parse<T>(res: Response): Promise<T> {
   throw new ApiRequestError(res.status, body.error, body.message);
 }
 
-/** Server-side GET, cached by Next.js for an hour (the API also caches). */
-export async function serverGet<T>(path: string, revalidate = 3600): Promise<T> {
-  const res = await fetch(`${SERVER_BASE}${path}`, { next: { revalidate } });
+/**
+ * Server-side GET, cached by Next.js for an hour (the API also caches).
+ * Times out so a slow or sleeping API can never hang a render or a build.
+ */
+export async function serverGet<T>(path: string, revalidate = 3600, timeoutMs = 10000): Promise<T> {
+  const res = await fetch(`${SERVER_BASE}${path}`, {
+    next: { revalidate },
+    signal: AbortSignal.timeout(timeoutMs),
+  });
   return parse<T>(res);
 }
 
