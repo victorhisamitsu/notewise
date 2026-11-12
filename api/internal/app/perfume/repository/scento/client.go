@@ -16,7 +16,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
@@ -137,18 +136,16 @@ func (c *Client) Edit(ctx context.Context, occasion string) ([]model.Pick, error
 	return out, nil
 }
 
-// Wardrobe suggests perfumes that complement the ones a person loves.
-func (c *Client) Wardrobe(ctx context.Context, loves []string, size int) ([]model.Pick, error) {
-	q := url.Values{"loves": {strings.Join(loves, ",")}, "size": {strconv.Itoa(size)}}
-	var d wardrobeDetail
-	if _, err := c.get(ctx, "/wardrobe", q, &d); err != nil {
-		return nil, err
+// Note describes one ingredient and the perfumes that showcase it.
+func (c *Client) Note(ctx context.Context, slug string) (model.Note, error) {
+	var d materialDetail
+	if _, err := c.get(ctx, "/materials/"+url.PathEscape(slug), nil, &d); err != nil {
+		return model.Note{}, err
 	}
-	out := make([]model.Pick, 0, len(d.Wardrobe))
-	for _, w := range d.Wardrobe {
-		out = append(out, model.Pick{Summary: summary(w.perfumeRef), Role: w.Role, Why: w.Why})
+	if d.Found != nil && !*d.Found {
+		return model.Note{}, model.ErrNoteNotFound
 	}
-	return out, nil
+	return toNote(d), nil
 }
 
 func (c *Client) pageURL(id string) string {

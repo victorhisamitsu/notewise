@@ -15,7 +15,8 @@ type fakeProvider struct {
 	mu            sync.Mutex
 	perfumes      map[string]model.Perfume
 	edit          []model.Pick
-	wardrobe      []model.Pick
+	notes         map[string]model.Note
+	matchErr      error
 	neighboursErr error
 	perfumeErr    error
 	editOccasion  string
@@ -53,8 +54,19 @@ func (f *fakeProvider) Neighbours(context.Context, string) ([]model.Neighbour, e
 	return []model.Neighbour{{Summary: model.Summary{ID: "n1"}}}, nil
 }
 
-func (f *fakeProvider) MatchNotes(context.Context, []string, string) ([]model.NoteMatch, int, error) {
-	return nil, 0, nil
+func (f *fakeProvider) MatchNotes(_ context.Context, notes []string, _ string) ([]model.NoteMatch, int, error) {
+	if f.matchErr != nil {
+		return nil, 0, f.matchErr
+	}
+	return []model.NoteMatch{{Summary: model.Summary{ID: "m-" + notes[0]}}}, 42, nil
+}
+
+func (f *fakeProvider) Note(_ context.Context, slug string) (model.Note, error) {
+	n, ok := f.notes[slug]
+	if !ok {
+		return model.Note{}, model.ErrNoteNotFound
+	}
+	return n, nil
 }
 
 func (f *fakeProvider) Families(context.Context) ([]model.Family, error) { return nil, nil }
@@ -62,10 +74,6 @@ func (f *fakeProvider) Families(context.Context) ([]model.Family, error) { retur
 func (f *fakeProvider) Edit(_ context.Context, occasion string) ([]model.Pick, error) {
 	f.editOccasion = occasion
 	return f.edit, nil
-}
-
-func (f *fakeProvider) Wardrobe(context.Context, []string, int) ([]model.Pick, error) {
-	return f.wardrobe, nil
 }
 
 func perfume(id, family string, notes []string, seasons, hours []string) model.Perfume {

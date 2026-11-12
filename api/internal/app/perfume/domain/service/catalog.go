@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"log/slog"
+	"strings"
 
 	"golang.org/x/sync/errgroup"
 
@@ -15,10 +16,18 @@ type PerfumeWithNeighbours struct {
 	Neighbours []model.Neighbour
 }
 
-// Catalog serves search, perfume pages, note matching and families.
+// NotePage is a note profile plus the perfumes that contain it.
+type NotePage struct {
+	Note     model.Note
+	Perfumes []model.NoteMatch
+	Total    int
+}
+
+// Catalog serves search, perfume pages, note pages, note matching and families.
 type Catalog interface {
 	Search(ctx context.Context, q string) ([]model.Summary, int, error)
 	PerfumePage(ctx context.Context, id string) (PerfumeWithNeighbours, error)
+	NotePage(ctx context.Context, slug string) (NotePage, error)
 	MatchNotes(ctx context.Context, notes []string, tier string) ([]model.NoteMatch, int, error)
 	Families(ctx context.Context) ([]model.Family, error)
 }
@@ -80,6 +89,43 @@ func (s *catalog) PerfumePage(ctx context.Context, id string) (PerfumeWithNeighb
 	if page.Neighbours == nil {
 		page.Neighbours = []model.Neighbour{}
 	}
+	return page, nil
+}
+
+// NotePage loads the note profile and the perfumes containing it
+// concurrently. The profile is required; the list degrades to the
+// provider's showcased perfumes if the match call fails.
+func (s *catalog) NotePage(ctx context.Context, slug string) (NotePage, error) {
+	var (
+		page     NotePage
+		matchErr error
+	)
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		n, err := s.provider.Note(gctx, slug)
+		page.Note = n
+		return err
+	})
+	g.Go(func() error {
+		res, total, err := s.provider.MatchNotes(gctx, []string{strings.ReplaceAll(slug, "-", " ")}, "any")
+		if err != nil {
+			matchErr = err
+			return nil
+		}
+		page.Perfumes, page.Total = res, total
+		return nil
+	})
+	if err := g.Wait(); err != nil {
+		s.log.WarnContext(ctx, "note page failed", "note", slug, "err", err)
+		return NotePage{}, err
+	}
+	if matchErr != nil || len(page.Perfumes) == 0 {
+		if matchErr != nil {
+			s.log.WarnContext(ctx, "note match unavailable, using showcased perfumes", "note", slug, "err", matchErr)
+		}
+		page.Perfumes, page.Total = page.Note.ShowcasedIn, len(page.Note.ShowcasedIn)
+	}
+	s.log.InfoContext(ctx, "note page", "note", slug, "perfumes", page.Total)
 	return page, nil
 }
 

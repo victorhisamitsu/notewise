@@ -15,6 +15,7 @@ import (
 // Domain errors, translated into HTTP responses by the handler layer.
 var (
 	ErrPerfumeNotFound = errors.New("perfume not found")
+	ErrNoteNotFound    = errors.New("note not found")
 	ErrInvalidInput    = errors.New("invalid input")
 	ErrUpstream        = errors.New("perfume provider unavailable")
 )
@@ -83,6 +84,21 @@ type NoteMatch struct {
 	Summary
 	// Where each requested note sits in the pyramid: top, heart, base or listed.
 	Tiers map[string]string `json:"tiers"`
+}
+
+// Note is an ingredient (raw material) as perfumers describe it.
+type Note struct {
+	ID         string   `json:"id"`
+	Name       string   `json:"name"`
+	Kind       string   `json:"kind,omitempty"` // natural, synthetic, or both
+	SmellsLike string   `json:"smellsLike,omitempty"`
+	Origin     string   `json:"origin,omitempty"`
+	Category   string   `json:"category,omitempty"` // e.g. Gourmand, Spice
+	Family     Family   `json:"family"`
+	PairsWith  []string `json:"pairsWith"`
+	Aliases    []string `json:"aliases"`
+	// Signature perfumes chosen by the provider, with where the note sits.
+	ShowcasedIn []NoteMatch `json:"showcasedIn"`
 }
 
 // Pick is a curated suggestion with a reason.

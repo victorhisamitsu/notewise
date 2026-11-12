@@ -26,7 +26,8 @@ var routes = map[string]string{
 	"/materials/match":                      "match.json",
 	"/families":                             "families.json",
 	"/edits/cold-weather":                   "edit.json",
-	"/wardrobe":                             "wardrobe.json",
+	"/materials/vanilla":                    "material.json",
+	"/materials/nothingness":                "material_notfound.json",
 }
 
 func newTestClient(t *testing.T, h http.HandlerFunc) *Client {
@@ -126,7 +127,7 @@ func TestSearch_MapsIDsAndCleansNames(t *testing.T) {
 	}
 }
 
-func TestNeighboursMatchFamiliesEditWardrobe(t *testing.T) {
+func TestNeighboursMatchFamiliesEdit(t *testing.T) {
 	var calls atomic.Int64
 	c := newTestClient(t, fixtureServer(t, &calls))
 	ctx := context.Background()
@@ -143,8 +144,26 @@ func TestNeighboursMatchFamiliesEditWardrobe(t *testing.T) {
 	if e, err := c.Edit(ctx, "cold-weather"); err != nil || len(e) == 0 || e[0].Why == "" {
 		t.Fatalf("edit: %v %+v", err, e)
 	}
-	if w, err := c.Wardrobe(ctx, []string{"layton"}, 3); err != nil || len(w) != 3 || w[0].Role == "" {
-		t.Fatalf("wardrobe: %v %+v", err, w)
+}
+
+func TestNote(t *testing.T) {
+	var calls atomic.Int64
+	c := newTestClient(t, fixtureServer(t, &calls))
+	n, err := c.Note(context.Background(), "vanilla")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n.ID != "vanilla" || n.SmellsLike == "" || n.Family.ID != "velvet-sweet" || len(n.ShowcasedIn) == 0 {
+		t.Fatalf("note = %+v", n)
+	}
+	if len(n.Aliases) > 8 {
+		t.Fatalf("aliases must be capped, got %d", len(n.Aliases))
+	}
+	if n.ShowcasedIn[0].Tiers["Vanilla"] == "" {
+		t.Fatalf("showcased tier missing: %+v", n.ShowcasedIn[0])
+	}
+	if _, err := c.Note(context.Background(), "nothingness"); !errors.Is(err, model.ErrNoteNotFound) {
+		t.Fatalf("err = %v, want ErrNoteNotFound", err)
 	}
 }
 

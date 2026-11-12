@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Bottle } from "@/components/Bottle";
 import { SearchBar } from "@/components/SearchBar";
 import { TodayPick } from "@/components/TodayPick";
+import { NoteChip } from "@/components/NoteChip";
+import { FEATURED_NOTES } from "@/lib/notes";
 import { serverGet } from "@/lib/api";
 import { familyColor } from "@/lib/families";
 import type { FamiliesResponse } from "@/lib/types";
@@ -32,8 +34,8 @@ export default async function Home() {
             Read a perfume <span className="italic text-accent">by its notes.</span>
           </h1>
           <p className="rise rise-2 mt-5 max-w-lg text-lg text-muted">
-            Explore note pyramids, find scents built on the notes you love, get a pick for today&apos;s weather and see
-            what your shelf says about your taste.
+            Explore note pyramids, discover the ingredients behind every scent, find perfumes built on the notes you
+            love and get a pick for today&apos;s weather.
           </p>
           <div className="rise rise-3 mt-8 max-w-xl">
             <SearchBar />
@@ -56,6 +58,25 @@ export default async function Home() {
       </section>
 
       <TodayPick />
+
+      <section aria-labelledby="ingredients">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.18em] text-faint">Start from an ingredient</p>
+            <h2 id="ingredients" className="mt-1 font-display text-3xl">What do you want to smell like?</h2>
+          </div>
+          <Link href="/ingredients" className="shrink-0 text-sm text-muted underline decoration-line underline-offset-2 hover:text-accent">
+            All ingredients
+          </Link>
+        </div>
+        <ul className="mt-6 grid grid-cols-3 gap-y-6 sm:grid-cols-6">
+          {FEATURED_NOTES.map((n) => (
+            <li key={n} className="flex justify-center">
+              <NoteChip name={n} size="lg" />
+            </li>
+          ))}
+        </ul>
+      </section>
 
       {fams.length > 0 && (
         <section aria-labelledby="families">

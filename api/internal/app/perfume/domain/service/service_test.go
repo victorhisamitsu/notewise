@@ -97,75 +97,35 @@ func TestPerfumePage_NotFound(t *testing.T) {
 	}
 }
 
-func TestAggregate(t *testing.T) {
-	p := Aggregate([]model.Perfume{
-		perfume("a", "Wood & Root", []string{"Vanilla", "Cedar"}, []string{"autumn", "winter"}, []string{"evening"}),
-		perfume("b", "Wood & Root", []string{"Vanilla", "Bergamot"}, []string{"winter"}, []string{"day"}),
-		perfume("c", "Sunlit Citrus", []string{"Lemon"}, []string{"summer"}, []string{"day"}),
-	})
-	if p.Size != 3 || p.Families[0].Label != "Wood & Root" || p.Families[0].Count != 2 {
-		t.Fatalf("families = %+v", p.Families)
-	}
-	if p.TopNotes[0].Label != "Vanilla" || p.TopNotes[0].Count != 2 {
-		t.Fatalf("top notes = %+v", p.TopNotes)
-	}
-	if len(p.Seasons) != 4 || p.Seasons[3].Label != "winter" || p.Seasons[3].Count != 2 {
-		t.Fatalf("seasons = %+v", p.Seasons)
-	}
-	if fmt.Sprint(p.Gaps) != "[spring night]" {
-		t.Fatalf("gaps = %v", p.Gaps)
-	}
-	if p.Headline != "Your shelf leans Wood & Root, with a soft spot for vanilla." {
-		t.Fatalf("headline = %q", p.Headline)
-	}
-}
-
-func TestAggregate_EclecticHeadline(t *testing.T) {
-	p := Aggregate([]model.Perfume{
-		perfume("a", "Wood & Root", []string{"Vanilla"}, nil, nil),
-		perfume("b", "Sunlit Citrus", []string{"Vanilla"}, nil, nil),
-	})
-	if p.Headline != "An eclectic shelf across 2 families, tied together by vanilla." {
-		t.Fatalf("headline = %q", p.Headline)
-	}
-}
-
-func TestAggregate_Empty(t *testing.T) {
-	p := Aggregate(nil)
-	if p.Size != 0 || p.Headline == "" || p.Gaps == nil || p.Families == nil {
-		t.Fatalf("empty profile must be fully initialised: %+v", p)
-	}
-}
-
-func TestProfile_ReportsMissingBoundsConcurrencyAndFiltersOwned(t *testing.T) {
-	f := &fakeProvider{perfumes: map[string]model.Perfume{}}
-	var ids []string
-	for i := 0; i < 12; i++ {
-		id := fmt.Sprintf("p%d", i)
-		ids = append(ids, id)
-		f.perfumes[id] = perfume(id, "Green Leaf", []string{"Mint"}, []string{"spring"}, []string{"day"})
-	}
-	ids = append(ids, "ghost")
-	f.wardrobe = []model.Pick{pick("p0", "green-leaf"), pick("new", "wood-root")}
-
-	prof, err := NewProfiler(f, discard).Profile(context.Background(), ids)
+func TestNotePage_UsesMatchAndSpacesInSlug(t *testing.T) {
+	f := &fakeProvider{notes: map[string]model.Note{"pink-pepper": {ID: "pink-pepper", Name: "Pink Pepper"}}}
+	page, err := NewCatalog(f, discard).NotePage(context.Background(), "pink-pepper")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if prof.Size != 12 || fmt.Sprint(prof.Missing) != "[ghost]" {
-		t.Fatalf("size=%d missing=%v", prof.Size, prof.Missing)
-	}
-	if f.maxInFlight > 5 {
-		t.Fatalf("max in-flight = %d, want <= 5", f.maxInFlight)
-	}
-	if len(prof.Suggestions) != 1 || prof.Suggestions[0].ID != "new" {
-		t.Fatalf("suggestions = %+v (owned perfumes must be filtered)", prof.Suggestions)
+	if page.Total != 42 || page.Perfumes[0].ID != "m-pink pepper" {
+		t.Fatalf("page = %+v (the match must receive the note name, not the slug)", page)
 	}
 }
 
-func TestProfile_UpstreamErrorFails(t *testing.T) {
-	f := &fakeProvider{perfumeErr: model.ErrUpstream}
-	if _, err := NewProfiler(f, discard).Profile(context.Background(), []string{"a"}); !errors.Is(err, model.ErrUpstream) {
+func TestNotePage_FallsBackToShowcasedWhenMatchFails(t *testing.T) {
+	showcased := []model.NoteMatch{{Summary: model.Summary{ID: "shalimar-guerlain"}}}
+	f := &fakeProvider{
+		notes:    map[string]model.Note{"vanilla": {ID: "vanilla", ShowcasedIn: showcased}},
+		matchErr: model.ErrUpstream,
+	}
+	page, err := NewCatalog(f, discard).NotePage(context.Background(), "vanilla")
+	if err != nil {
+		t.Fatalf("note page must degrade, got %v", err)
+	}
+	if page.Total != 1 || page.Perfumes[0].ID != "shalimar-guerlain" {
+		t.Fatalf("page = %+v", page)
+	}
+}
+
+func TestNotePage_NotFound(t *testing.T) {
+	f := &fakeProvider{notes: map[string]model.Note{}}
+	if _, err := NewCatalog(f, discard).NotePage(context.Background(), "nothing"); !errors.Is(err, model.ErrNoteNotFound) {
 		t.Fatalf("err = %v", err)
 	}
 }

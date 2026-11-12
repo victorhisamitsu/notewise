@@ -54,6 +54,40 @@ func toPerfume(d perfumeDetail, sourceURL string) model.Perfume {
 	return p
 }
 
+func str(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
+
+func toNote(d materialDetail) model.Note {
+	n := model.Note{
+		ID:         model.Slugify(d.Name),
+		Name:       d.Name,
+		Kind:       str(d.Kind),
+		SmellsLike: str(d.SmellsLike),
+		Origin:     str(d.Origin),
+		Category:   str(d.Category),
+		PairsWith:  nonNil(d.PairsWith),
+		Aliases:    nonNil(d.Aliases),
+	}
+	if fam := str(d.ScentoFamily); fam != "" {
+		n.Family = family(fam)
+	}
+	if len(n.Aliases) > 8 {
+		n.Aliases = n.Aliases[:8]
+	}
+	n.ShowcasedIn = make([]model.NoteMatch, 0, len(d.ShowcasedIn))
+	for _, s := range d.ShowcasedIn {
+		n.ShowcasedIn = append(n.ShowcasedIn, model.NoteMatch{
+			Summary: summary(perfumeRef{Name: s.Name, House: s.House}),
+			Tiers:   map[string]string{d.Name: s.Tier},
+		})
+	}
+	return n
+}
+
 func nonNil(s []string) []string {
 	if s == nil {
 		return []string{}

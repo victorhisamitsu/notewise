@@ -5,12 +5,12 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: { default: "Notewise — discover perfumes by their notes", template: "%s · Notewise" },
   description:
-    "Explore perfumes through their note pyramids, find scents by the notes you love, get a pick for today's weather and learn what your shelf says about you.",
+    "Explore perfumes through their note pyramids, find scents by the notes you love, discover the ingredients behind them and get a pick for today's weather.",
 };
 
 const nav = [
   { href: "/notes", label: "Note finder" },
-  { href: "/shelf", label: "My shelf" },
+  { href: "/ingredients", label: "Ingredients" },
 ];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -39,6 +39,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <a className="underline decoration-line underline-offset-2 hover:text-muted" href="https://www.scento.com/developers/perfume-api" target="_blank" rel="noreferrer">
                 Scento Perfume API, scento.com
               </a>
+              {" · "}Ingredient photos:{" "}
+              <Link className="underline decoration-line underline-offset-2 hover:text-muted" href="/credits">
+                Wikimedia Commons
+              </Link>
               {" · "}Weather:{" "}
               <a className="underline decoration-line underline-offset-2 hover:text-muted" href="https://open-meteo.com" target="_blank" rel="noreferrer">
                 Open-Meteo

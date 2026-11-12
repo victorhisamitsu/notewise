@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { PerfumeCard } from "@/components/PerfumeCard";
 import { ApiRequestError, clientFetch } from "@/lib/api";
 import { POPULAR_NOTES } from "@/lib/families";
+import Image from "next/image";
+import { notePhoto } from "@/lib/notes";
 import type { NoteMatchResponse } from "@/lib/types";
 
 const TIERS = [
@@ -74,7 +76,8 @@ export function NoteFinder() {
           className="flex flex-wrap items-center gap-2"
         >
           {notes.map((n) => (
-            <span key={n} className="inline-flex items-center gap-1 rounded-full bg-accent-soft py-1 pl-3 pr-1 text-sm text-accent">
+            <span key={n} className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft py-1 pl-1 pr-1 text-sm text-accent">
+              <Thumb name={n} />
               {n}
               <button
                 type="button"
@@ -107,9 +110,9 @@ export function NoteFinder() {
               type="button"
               onClick={() => add(n)}
               disabled={notes.length >= 4}
-              className="rounded-full border border-line px-3 py-1 text-sm text-muted transition hover:border-accent hover:text-ink disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded-full border border-line py-1 pl-1 pr-3 text-sm text-muted transition hover:border-accent hover:text-ink disabled:opacity-40"
             >
-              + {n}
+              <Thumb name={n} /> {n}
             </button>
           ))}
         </div>
@@ -164,5 +167,16 @@ export function NoteFinder() {
         )}
       </div>
     </div>
+  );
+}
+
+function Thumb({ name }: { name: string }) {
+  const photo = notePhoto(name);
+  return photo ? (
+    <Image src={photo.src} alt="" width={48} height={48} className="h-6 w-6 rounded-full object-cover" />
+  ) : (
+    <span aria-hidden className="flex h-6 w-6 items-center justify-center rounded-full bg-card text-xs">
+      {name[0]}
+    </span>
   );
 }

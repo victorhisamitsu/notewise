@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/victorhisamitsu/notewise/api/internal/app/perfume/controller/dto"
 	"github.com/victorhisamitsu/notewise/api/internal/app/perfume/domain/model"
 	"github.com/victorhisamitsu/notewise/api/internal/app/perfume/domain/service"
 )
@@ -30,12 +29,9 @@ func (f *fakeCatalog) MatchNotes(_ context.Context, n []string, _ string) ([]mod
 	return nil, 0, nil
 }
 func (f *fakeCatalog) Families(context.Context) ([]model.Family, error) { return nil, nil }
-
-type fakeProfiler struct{ ids []string }
-
-func (f *fakeProfiler) Profile(_ context.Context, ids []string) (model.CollectionProfile, error) {
-	f.ids = ids
-	return model.CollectionProfile{}, nil
+func (f *fakeCatalog) NotePage(context.Context, string) (service.NotePage, error) {
+	f.calls++
+	return service.NotePage{}, nil
 }
 
 type fakeRecommender struct{ calls int }
@@ -92,7 +88,7 @@ func TestMatchNotes_NormalizesAndValidates(t *testing.T) {
 
 func TestToday_ValidatesWeather(t *testing.T) {
 	r := &fakeRecommender{}
-	u := NewPersonal(r, &fakeProfiler{}, "")
+	u := NewPersonal(r, "")
 	for _, w := range []model.Weather{{TemperatureC: 99}, {Humidity: 120}, {Code: 150}} {
 		if _, err := u.Today(context.Background(), w); !errors.Is(err, model.ErrInvalidInput) {
 			t.Errorf("w=%+v: err = %v", w, err)
@@ -103,23 +99,12 @@ func TestToday_ValidatesWeather(t *testing.T) {
 	}
 }
 
-func TestProfile_DedupesAndLimits(t *testing.T) {
-	p := &fakeProfiler{}
-	u := NewPersonal(&fakeRecommender{}, p, "")
-	if _, err := u.Profile(context.Background(), dto.ProfileRequest{PerfumeIDs: []string{"a-b", "a-b", "c-d"}}); err != nil {
+func TestNote_RejectsInvalidSlug(t *testing.T) {
+	c := &fakeCatalog{}
+	if _, err := NewDiscovery(c, "").Note(context.Background(), "Pink Pepper"); !errors.Is(err, model.ErrInvalidInput) || c.calls != 0 {
+		t.Fatalf("err=%v calls=%d", err, c.calls)
+	}
+	if _, err := NewDiscovery(c, "").Note(context.Background(), "pink-pepper"); err != nil {
 		t.Fatal(err)
-	}
-	if strings.Join(p.ids, ",") != "a-b,c-d" {
-		t.Fatalf("ids = %v", p.ids)
-	}
-	many := make([]string, 31)
-	for i := range many {
-		many[i] = "p" + strings.Repeat("x", i+1)
-	}
-	if _, err := u.Profile(context.Background(), dto.ProfileRequest{PerfumeIDs: many}); !errors.Is(err, model.ErrInvalidInput) {
-		t.Fatalf("err = %v", err)
-	}
-	if _, err := u.Profile(context.Background(), dto.ProfileRequest{PerfumeIDs: []string{"Bad ID"}}); !errors.Is(err, model.ErrInvalidInput) {
-		t.Fatalf("err = %v", err)
 	}
 }

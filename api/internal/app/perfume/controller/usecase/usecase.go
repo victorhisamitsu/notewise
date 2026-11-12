@@ -17,17 +17,15 @@ import (
 type Discovery interface {
 	Search(ctx context.Context, q string) (dto.SearchResponse, error)
 	Perfume(ctx context.Context, id string) (dto.PerfumeResponse, error)
+	Note(ctx context.Context, slug string) (dto.NoteResponse, error)
 	MatchNotes(ctx context.Context, notes []string, tier string) (dto.NoteMatchResponse, error)
 	Families(ctx context.Context) (dto.FamiliesResponse, error)
 }
 
-// Personal groups the workflows that depend on the user's context.
+// Personal groups the workflows that depend on the visitor's context.
 type Personal interface {
 	Today(ctx context.Context, w model.Weather) (dto.TodayResponse, error)
-	Profile(ctx context.Context, req dto.ProfileRequest) (dto.ProfileResponse, error)
 }
-
-const maxCollection = 30
 
 type discovery struct {
 	catalog     service.Catalog
@@ -64,6 +62,17 @@ func (u *discovery) Perfume(ctx context.Context, id string) (dto.PerfumeResponse
 		return dto.PerfumeResponse{}, err
 	}
 	return dto.PerfumeResponse{Perfume: page.Perfume, Neighbours: page.Neighbours, Attribution: u.attribution}, nil
+}
+
+func (u *discovery) Note(ctx context.Context, slug string) (dto.NoteResponse, error) {
+	if !model.ValidID(slug) {
+		return dto.NoteResponse{}, invalid("invalid note %q", slug)
+	}
+	page, err := u.catalog.NotePage(ctx, slug)
+	if err != nil {
+		return dto.NoteResponse{}, err
+	}
+	return dto.NoteResponse{Note: page.Note, Perfumes: page.Perfumes, Total: page.Total, Attribution: u.attribution}, nil
 }
 
 func (u *discovery) MatchNotes(ctx context.Context, notes []string, tier string) (dto.NoteMatchResponse, error) {
@@ -108,13 +117,12 @@ func (u *discovery) Families(ctx context.Context) (dto.FamiliesResponse, error) 
 
 type personal struct {
 	recommender service.Recommender
-	profiler    service.Profiler
 	attribution string
 }
 
 // NewPersonal creates the personal use cases.
-func NewPersonal(r service.Recommender, p service.Profiler, attribution string) Personal {
-	return &personal{recommender: r, profiler: p, attribution: attribution}
+func NewPersonal(r service.Recommender, attribution string) Personal {
+	return &personal{recommender: r, attribution: attribution}
 }
 
 func (u *personal) Today(ctx context.Context, w model.Weather) (dto.TodayResponse, error) {
@@ -131,27 +139,4 @@ func (u *personal) Today(ctx context.Context, w model.Weather) (dto.TodayRespons
 		return dto.TodayResponse{}, err
 	}
 	return dto.TodayResponse{TodayPick: pick, Attribution: u.attribution}, nil
-}
-
-func (u *personal) Profile(ctx context.Context, req dto.ProfileRequest) (dto.ProfileResponse, error) {
-	ids := make([]string, 0, len(req.PerfumeIDs))
-	seen := map[string]bool{}
-	for _, id := range req.PerfumeIDs {
-		if seen[id] {
-			continue
-		}
-		if !model.ValidID(id) {
-			return dto.ProfileResponse{}, invalid("invalid perfume id %q", id)
-		}
-		seen[id] = true
-		ids = append(ids, id)
-	}
-	if len(ids) > maxCollection {
-		return dto.ProfileResponse{}, invalid("a collection can have at most %d perfumes", maxCollection)
-	}
-	prof, err := u.profiler.Profile(ctx, ids)
-	if err != nil {
-		return dto.ProfileResponse{}, err
-	}
-	return dto.ProfileResponse{CollectionProfile: prof, Attribution: u.attribution}, nil
 }

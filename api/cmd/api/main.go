@@ -34,12 +34,11 @@ func main() {
 	// Domain services
 	catalog := service.NewCatalog(provider, log)
 	recommender := service.NewRecommender(provider, log)
-	profiler := service.NewProfiler(provider, log)
 
 	// Use cases and handler
 	h := handler.NewPerfume(
 		usecase.NewDiscovery(catalog, scento.Attribution),
-		usecase.NewPersonal(recommender, profiler, scento.Attribution),
+		usecase.NewPersonal(recommender, scento.Attribution),
 		log,
 	)
 

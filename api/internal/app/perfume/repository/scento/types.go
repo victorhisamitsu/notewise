@@ -89,10 +89,19 @@ type editDetail struct {
 	} `json:"edit"`
 }
 
-type wardrobeDetail struct {
-	Wardrobe []struct {
-		perfumeRef
-		Role string `json:"role"`
-		Why  string `json:"why"`
-	} `json:"wardrobe"`
+type materialDetail struct {
+	Found        *bool    `json:"found"`
+	Name         string   `json:"name"`
+	Aliases      []string `json:"aliases"`
+	Origin       *string  `json:"origin"`
+	Kind         *string  `json:"natural_or_synthetic"`
+	SmellsLike   *string  `json:"smells_like"`
+	Category     *string  `json:"family"`
+	ScentoFamily *string  `json:"scento_family"`
+	PairsWith    []string `json:"pairs_well_with"`
+	ShowcasedIn  []struct {
+		Name  string `json:"name"`
+		House string `json:"house"`
+		Tier  string `json:"tier"`
+	} `json:"showcased_in"`
 }

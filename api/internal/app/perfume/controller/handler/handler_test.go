@@ -24,6 +24,9 @@ func (f fakeDiscovery) Search(context.Context, string) (dto.SearchResponse, erro
 func (f fakeDiscovery) Perfume(context.Context, string) (dto.PerfumeResponse, error) {
 	return dto.PerfumeResponse{}, f.err
 }
+func (f fakeDiscovery) Note(context.Context, string) (dto.NoteResponse, error) {
+	return dto.NoteResponse{}, f.err
+}
 func (f fakeDiscovery) MatchNotes(context.Context, []string, string) (dto.NoteMatchResponse, error) {
 	return dto.NoteMatchResponse{}, f.err
 }
@@ -40,9 +43,6 @@ func (f *fakePersonal) Today(_ context.Context, w model.Weather) (dto.TodayRespo
 	f.weather = w
 	return dto.TodayResponse{}, f.err
 }
-func (f *fakePersonal) Profile(context.Context, dto.ProfileRequest) (dto.ProfileResponse, error) {
-	return dto.ProfileResponse{}, f.err
-}
 
 var discard = slog.New(slog.NewTextHandler(io.Discard, nil))
 
@@ -50,7 +50,8 @@ func serve(h *Perfume, method, target, body string) *httptest.ResponseRecorder {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/v1/perfumes/{id}", h.Get)
 	mux.HandleFunc("GET /api/v1/recommendations/today", h.Today)
-	mux.HandleFunc("POST /api/v1/collection/profile", h.Profile)
+	mux.HandleFunc("GET /api/v1/notes/match", h.MatchNotes)
+	mux.HandleFunc("GET /api/v1/notes/{note}", h.Note)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest(method, target, strings.NewReader(body)))
 	return rec
@@ -107,12 +108,13 @@ func TestToday_ParsesQuery(t *testing.T) {
 	}
 }
 
-func TestProfile_RejectsMalformedJSON(t *testing.T) {
-	h := NewPerfume(fakeDiscovery{}, &fakePersonal{}, discard)
-	if rec := serve(h, http.MethodPost, "/api/v1/collection/profile", "{not json"); rec.Code != 400 {
-		t.Fatalf("status = %d", rec.Code)
+func TestNoteRoute_NotFoundAndNoClashWithMatch(t *testing.T) {
+	h := NewPerfume(fakeDiscovery{err: model.ErrNoteNotFound}, &fakePersonal{}, discard)
+	if rec := serve(h, http.MethodGet, "/api/v1/notes/nothing", ""); rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", rec.Code)
 	}
-	if rec := serve(h, http.MethodPost, "/api/v1/collection/profile", `{"perfumeIds":["a-b"]}`); rec.Code != 200 || rec.Header().Get("Cache-Control") != httpx.NoStore {
-		t.Fatalf("status = %d cache=%q", rec.Code, rec.Header().Get("Cache-Control"))
+	ok := NewPerfume(fakeDiscovery{}, &fakePersonal{}, discard)
+	if rec := serve(ok, http.MethodGet, "/api/v1/notes/match?notes=vanilla", ""); rec.Code != http.StatusOK {
+		t.Fatalf("match route status = %d", rec.Code)
 	}
 }

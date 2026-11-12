@@ -4,7 +4,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -41,6 +40,12 @@ func (h *Perfume) Get(w http.ResponseWriter, r *http.Request) {
 	h.respond(w, r, res, err, httpx.CacheLong)
 }
 
+// Note handles GET /api/v1/notes/{note}.
+func (h *Perfume) Note(w http.ResponseWriter, r *http.Request) {
+	res, err := h.discovery.Note(r.Context(), r.PathValue("note"))
+	h.respond(w, r, res, err, httpx.CacheLong)
+}
+
 // MatchNotes handles GET /api/v1/notes/match?notes=vanilla,tonka&tier=base.
 func (h *Perfume) MatchNotes(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
@@ -70,17 +75,6 @@ func (h *Perfume) Today(w http.ResponseWriter, r *http.Request) {
 	h.respond(w, r, res, err, httpx.CacheShort)
 }
 
-// Profile handles POST /api/v1/collection/profile.
-func (h *Perfume) Profile(w http.ResponseWriter, r *http.Request) {
-	var req dto.ProfileRequest
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16<<10)).Decode(&req); err != nil {
-		h.respond(w, r, nil, errors.Join(model.ErrInvalidInput, err), "")
-		return
-	}
-	res, err := h.personal.Profile(r.Context(), req)
-	h.respond(w, r, res, err, httpx.NoStore)
-}
-
 func (h *Perfume) respond(w http.ResponseWriter, r *http.Request, body any, err error, cache string) {
 	if err == nil {
 		w.Header().Set("Cache-Control", cache)
@@ -102,7 +96,7 @@ func Status(err error) (int, string) {
 	switch {
 	case errors.Is(err, model.ErrInvalidInput):
 		return http.StatusBadRequest, "invalid_input"
-	case errors.Is(err, model.ErrPerfumeNotFound):
+	case errors.Is(err, model.ErrPerfumeNotFound), errors.Is(err, model.ErrNoteNotFound):
 		return http.StatusNotFound, "not_found"
 	case errors.Is(err, context.DeadlineExceeded):
 		return http.StatusGatewayTimeout, "timeout"

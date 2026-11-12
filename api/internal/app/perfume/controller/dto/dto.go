@@ -39,15 +39,12 @@ type TodayResponse struct {
 	Attribution string `json:"attribution"`
 }
 
-// ProfileRequest is the body of POST /api/v1/collection/profile.
-type ProfileRequest struct {
-	PerfumeIDs []string `json:"perfumeIds"`
-}
-
-// ProfileResponse is returned by POST /api/v1/collection/profile.
-type ProfileResponse struct {
-	model.CollectionProfile
-	Attribution string `json:"attribution"`
+// NoteResponse is returned by GET /api/v1/notes/{note}.
+type NoteResponse struct {
+	Note        model.Note        `json:"note"`
+	Perfumes    []model.NoteMatch `json:"perfumes"`
+	Total       int               `json:"total"`
+	Attribution string            `json:"attribution"`
 }
 
 // ErrorResponse is the body of every error.

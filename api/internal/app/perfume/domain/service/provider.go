@@ -17,5 +17,5 @@ type PerfumeProvider interface {
 	MatchNotes(ctx context.Context, notes []string, tier string) ([]model.NoteMatch, int, error)
 	Families(ctx context.Context) ([]model.Family, error)
 	Edit(ctx context.Context, occasion string) ([]model.Pick, error)
-	Wardrobe(ctx context.Context, loves []string, size int) ([]model.Pick, error)
+	Note(ctx context.Context, slug string) (model.Note, error)
 }

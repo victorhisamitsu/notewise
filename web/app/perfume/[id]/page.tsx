@@ -4,8 +4,8 @@ import { notFound } from "next/navigation";
 import { Bottle, BottleStage } from "@/components/Bottle";
 import { FamilyBadge } from "@/components/FamilyBadge";
 import { PerfumeCard } from "@/components/PerfumeCard";
+import { NoteChip } from "@/components/NoteChip";
 import { NoteList, Pyramid } from "@/components/Pyramid";
-import { ShelfButtons } from "@/components/ShelfButtons";
 import { ApiRequestError, serverGet } from "@/lib/api";
 import type { PerfumeResponse } from "@/lib/types";
 
@@ -79,10 +79,6 @@ export default async function PerfumePage({ params }: Props) {
             </p>
           )}
 
-          <div className="mt-6">
-            <ShelfButtons perfume={p} />
-          </div>
-
           {facts.length > 0 && (
             <dl className="mt-8 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-line pt-6 text-sm">
               {facts.map((f) => (
@@ -100,17 +96,14 @@ export default async function PerfumePage({ params }: Props) {
               {p.pyramid ? <Pyramid pyramid={p.pyramid} familyId={p.family.id} /> : <NoteList notes={p.notes} />}
             </div>
             {p.signatureNotes.length > 0 && (
-              <p className="mt-4 text-sm text-muted">
-                Signature notes:{" "}
-                {p.signatureNotes.map((n, i) => (
-                  <span key={n}>
-                    {i > 0 && ", "}
-                    <Link className="underline decoration-line underline-offset-2 hover:text-accent" href={`/notes?notes=${encodeURIComponent(n)}`}>
-                      {n}
-                    </Link>
-                  </span>
-                ))}
-              </p>
+              <div className="mt-5">
+                <p className="text-sm text-muted">Signature notes</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {p.signatureNotes.map((n) => (
+                    <NoteChip key={n} name={n} size="sm" />
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         </div>

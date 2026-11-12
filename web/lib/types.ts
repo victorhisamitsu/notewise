@@ -48,18 +48,17 @@ export type TodayResponse = {
   picks: Pick[];
   attribution: string;
 };
-export type Count = { label: string; count: number };
-export type ProfileResponse = {
-  size: number;
-  families: Count[];
-  topNotes: Count[];
-  seasons: Count[];
-  hours: Count[];
-  characterWords: Count[];
-  headline: string;
-  gaps: string[];
-  suggestions: Pick[];
-  missing: string[];
-  attribution: string;
+export type Note = {
+  id: string;
+  name: string;
+  kind?: string;
+  smellsLike?: string;
+  origin?: string;
+  category?: string;
+  family: Family;
+  pairsWith: string[];
+  aliases: string[];
+  showcasedIn: NoteMatch[];
 };
+export type NoteResponse = { note: Note; perfumes: NoteMatch[]; total: number; attribution: string };
 export type ApiError = { error: string; message: string };
