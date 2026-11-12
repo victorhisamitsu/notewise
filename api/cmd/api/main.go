@@ -44,9 +44,6 @@ func main() {
 
 	mux := http.NewServeMux()
 	controller.RegisterRoutes(mux, h)
-	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, _ *http.Request) {
-		httpx.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
-	})
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,

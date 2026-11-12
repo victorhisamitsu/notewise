@@ -16,7 +16,7 @@ export class ApiRequestError extends Error {
 
 async function parse<T>(res: Response): Promise<T> {
   if (res.ok) return (await res.json()) as T;
-  let body: ApiError = { error: "unknown", message: res.statusText };
+  let body: ApiError = { error: "internal_error", message: res.statusText };
   try {
     body = (await res.json()) as ApiError;
   } catch {

@@ -1,0 +1,288 @@
+openapi: 3.1.0
+info:
+  title: Notewise API
+  version: 1.0.0
+  description: |
+    Perfume discovery API: search, perfume profiles with similar perfumes,
+    ingredient (note) pages, note matching, olfactory families and
+    weather-based recommendations. Data comes from the Scento Perfume API;
+    every response carries its attribution.
+
+    This file is the contract between the Go API and the web app: the
+    TypeScript types in web/lib/api-schema.ts are generated from it, and a Go
+    test fails if a route is added without being documented here.
+servers:
+  - url: https://notewise-api.vercel.app
+paths:
+  /api/health:
+    get:
+      summary: Health check
+      operationId: health
+      responses:
+        "200":
+          description: The API is up
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, example: ok }
+  /api/v1/perfumes/search:
+    get:
+      summary: Search perfumes by name, house, note or mood word
+      operationId: searchPerfumes
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 2, maxLength: 80 }
+      responses:
+        "200":
+          description: Matching perfumes
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SearchResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "502": { $ref: "#/components/responses/Upstream" }
+  /api/v1/perfumes/{id}:
+    get:
+      summary: A perfume profile and the perfumes that share its structure
+      operationId: getPerfume
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "<name>-<house> slug, e.g. eau-sauvage-dior"
+          schema: { type: string, pattern: "^[a-z0-9]+(-[a-z0-9]+)*$" }
+      responses:
+        "200":
+          description: The perfume page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PerfumeResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "502": { $ref: "#/components/responses/Upstream" }
+  /api/v1/notes/match:
+    get:
+      summary: Perfumes that contain all the given notes
+      operationId: matchNotes
+      parameters:
+        - name: notes
+          in: query
+          required: true
+          description: One to four comma-separated notes
+          schema: { type: string, example: "vanilla,tonka bean" }
+        - name: tier
+          in: query
+          required: false
+          schema: { type: string, enum: [any, top, heart, base], default: any }
+      responses:
+        "200":
+          description: Matching perfumes
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NoteMatchResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "502": { $ref: "#/components/responses/Upstream" }
+  /api/v1/notes/{note}:
+    get:
+      summary: An ingredient profile and the perfumes that contain it
+      operationId: getNote
+      parameters:
+        - name: note
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[a-z0-9]+(-[a-z0-9]+)*$", example: pink-pepper }
+      responses:
+        "200":
+          description: The note page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NoteResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "502": { $ref: "#/components/responses/Upstream" }
+  /api/v1/families:
+    get:
+      summary: The olfactory families
+      operationId: listFamilies
+      responses:
+        "200":
+          description: All families
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FamiliesResponse" }
+        "502": { $ref: "#/components/responses/Upstream" }
+  /api/v1/recommendations/today:
+    get:
+      summary: Perfumes that suit the current weather
+      operationId: todayPick
+      parameters:
+        - { name: temp, in: query, required: true, schema: { type: number, minimum: -60, maximum: 60 } }
+        - { name: humidity, in: query, required: true, schema: { type: number, minimum: 0, maximum: 100 } }
+        - { name: code, in: query, required: true, description: WMO weather code, schema: { type: integer, minimum: 0, maximum: 99 } }
+        - { name: isDay, in: query, required: false, schema: { type: boolean, default: true } }
+      responses:
+        "200":
+          description: The recommendation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TodayResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "502": { $ref: "#/components/responses/Upstream" }
+components:
+  responses:
+    BadRequest:
+      description: Invalid input
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    NotFound:
+      description: Not in the database
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    Upstream:
+      description: The perfume database is unavailable
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error, message]
+      properties:
+        error: { type: string, enum: [invalid_input, not_found, timeout, upstream_unavailable, internal_error] }
+        message: { type: string }
+    Family:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, example: sunlit-citrus }
+        name: { type: string, example: Sunlit Citrus }
+        definition: { type: string }
+        count: { type: integer }
+        subfamilies: { type: array, items: { type: string } }
+    Summary:
+      type: object
+      required: [id, name, house, family]
+      properties:
+        id: { type: string, example: eau-sauvage-dior }
+        name: { type: string }
+        house: { type: string }
+        family: { $ref: "#/components/schemas/Family" }
+    Pyramid:
+      type: object
+      required: [top, heart, base]
+      properties:
+        top: { type: array, items: { type: string } }
+        heart: { type: array, items: { type: string } }
+        base: { type: array, items: { type: string } }
+    Perfume:
+      allOf:
+        - $ref: "#/components/schemas/Summary"
+        - type: object
+          required: [notes, characterWords, seasons, hours, signatureNotes]
+          properties:
+            year: { type: integer }
+            perfumer: { type: string }
+            concentration: { type: string }
+            subfamily: { type: string }
+            pyramid: { $ref: "#/components/schemas/Pyramid" }
+            notes: { type: array, items: { type: string } }
+            character: { type: string }
+            characterWords: { type: array, items: { type: string } }
+            seasons: { type: array, items: { type: string } }
+            hours: { type: array, items: { type: string } }
+            signatureNotes: { type: array, items: { type: string } }
+            sourceUrl: { type: string }
+    Neighbour:
+      allOf:
+        - $ref: "#/components/schemas/Summary"
+        - type: object
+          required: [sharedNotes]
+          properties:
+            sharedNotes: { type: array, items: { type: string } }
+            difference: { type: string }
+    NoteMatch:
+      allOf:
+        - $ref: "#/components/schemas/Summary"
+        - type: object
+          required: [tiers]
+          properties:
+            tiers:
+              description: Where each requested note sits (top, heart, base or listed)
+              type: object
+              additionalProperties: { type: string }
+    Pick:
+      allOf:
+        - $ref: "#/components/schemas/Summary"
+        - type: object
+          required: [why]
+          properties:
+            role: { type: string }
+            why: { type: string }
+    Note:
+      type: object
+      required: [id, name, family, pairsWith, aliases, showcasedIn]
+      properties:
+        id: { type: string, example: vanilla }
+        name: { type: string }
+        kind: { type: string, example: natural }
+        smellsLike: { type: string }
+        origin: { type: string }
+        category: { type: string, example: Gourmand }
+        family: { $ref: "#/components/schemas/Family" }
+        pairsWith: { type: array, items: { type: string } }
+        aliases: { type: array, items: { type: string } }
+        showcasedIn: { type: array, items: { $ref: "#/components/schemas/NoteMatch" } }
+    SearchResponse:
+      type: object
+      required: [query, total, results, attribution]
+      properties:
+        query: { type: string }
+        total: { type: integer }
+        results: { type: array, items: { $ref: "#/components/schemas/Summary" } }
+        attribution: { type: string }
+    PerfumeResponse:
+      type: object
+      required: [perfume, neighbours, attribution]
+      properties:
+        perfume: { $ref: "#/components/schemas/Perfume" }
+        neighbours: { type: array, items: { $ref: "#/components/schemas/Neighbour" } }
+        attribution: { type: string }
+    NoteMatchResponse:
+      type: object
+      required: [notes, tier, total, results, attribution]
+      properties:
+        notes: { type: array, items: { type: string } }
+        tier: { type: string, enum: [any, top, heart, base] }
+        total: { type: integer }
+        results: { type: array, items: { $ref: "#/components/schemas/NoteMatch" } }
+        attribution: { type: string }
+    NoteResponse:
+      type: object
+      required: [note, perfumes, total, attribution]
+      properties:
+        note: { $ref: "#/components/schemas/Note" }
+        perfumes: { type: array, items: { $ref: "#/components/schemas/NoteMatch" } }
+        total: { type: integer }
+        attribution: { type: string }
+    FamiliesResponse:
+      type: object
+      required: [families, attribution]
+      properties:
+        families: { type: array, items: { $ref: "#/components/schemas/Family" } }
+        attribution: { type: string }
+    TodayResponse:
+      type: object
+      required: [occasion, headline, reason, mood, picks, attribution]
+      properties:
+        occasion: { type: string, example: summer-days }
+        headline: { type: string }
+        reason: { type: string }
+        mood: { type: string, enum: [hot-humid, hot, cold, rainy, evening, mild] }
+        picks: { type: array, items: { $ref: "#/components/schemas/Pick" } }
+        attribution: { type: string }
