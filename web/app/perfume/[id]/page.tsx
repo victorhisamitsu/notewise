@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Bottle } from "@/components/Bottle";
+import { Bottle, BottleStage } from "@/components/Bottle";
 import { FamilyBadge } from "@/components/FamilyBadge";
 import { PerfumeCard } from "@/components/PerfumeCard";
 import { NoteList, Pyramid } from "@/components/Pyramid";
@@ -48,8 +48,10 @@ export default async function PerfumePage({ params }: Props) {
       </Link>
 
       <section className="mt-6 grid gap-10 md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
-        <div className="flex flex-col items-center gap-6 self-start rounded-3xl border border-line bg-card px-6 py-10 md:sticky md:top-6">
-          <Bottle id={p.id} name={p.name} house={p.house} familyId={p.family.id} concentration={p.concentration} size={190} animate />
+        <div className="flex flex-col items-center gap-6 self-start overflow-hidden rounded-3xl border border-line bg-card pb-8 md:sticky md:top-6">
+          <BottleStage familyId={p.family.id} className="w-full pb-6 pt-10">
+            <Bottle id={p.id} name={p.name} house={p.house} familyId={p.family.id} concentration={p.concentration} size={210} animate />
+          </BottleStage>
           <div className="flex flex-wrap justify-center gap-2">
             {p.seasons.map((s) => (
               <span key={s} className="rounded-full bg-paper px-3 py-1 text-sm capitalize text-muted">
