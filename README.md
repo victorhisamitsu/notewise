@@ -8,6 +8,8 @@
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-06B6D4?logo=tailwindcss&logoColor=white)
 ![Vercel](https://img.shields.io/badge/Deploy-Vercel-000000?logo=vercel&logoColor=white)
 
+### 🔗 Live demo: **[notewise-perfumes.vercel.app](https://notewise-perfumes.vercel.app)**
+
 ![Notewise home page](docs/screenshots/home.jpg)
 
 ---
@@ -181,18 +183,19 @@ curl -X POST localhost:8080/api/v1/collection/profile -d '{"perfumeIds":["eau-sa
 
 ## 🚀 Deploy on Vercel
 
-The repository deploys as **two Vercel projects**, both free on the Hobby plan.
+Live at **[notewise-perfumes.vercel.app](https://notewise-perfumes.vercel.app)**, with the API at `notewise-api.vercel.app`. The repository deploys as **two Vercel projects**, both free on the Hobby plan.
 
 **1. The API**
 1. On Vercel, **Add New → Project** and import this repository.
 2. **Root Directory:** `api` · **Framework Preset:** `Go`.
-3. Deploy, then copy the URL (e.g. `https://notewise-api.vercel.app`).
+3. Deploy, then check `https://<your-api>.vercel.app/api/health` returns `{"status":"ok"}` and copy the URL.
 
 **2. The web app**
 1. Import the same repository again as a second project.
 2. **Root Directory:** `web` · **Framework Preset:** `Next.js`.
 3. **Environment variable:** `API_URL` = the API URL from step 1 (no trailing slash).
 4. Deploy.
+5. **Settings → Domains → Add Existing** and pick a public `*.vercel.app` name for production. The automatic `-git-main-` and hash URLs are behind Vercel's login (Standard Deployment Protection), so share the production domain.
 
 ## ⚖️ Trade-offs and limitations
 
